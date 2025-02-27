@@ -1,7 +1,9 @@
+import java.time.LocalDate;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
+        TaskManager taskManager = new TaskManager();
         Scanner scanner = new Scanner(System.in);
 
         while (true) {
@@ -20,22 +22,30 @@ public class Main {
 
             switch (choice) {
                 case 1:
-                    System.out.println("\nYou picked add task.");
+                    System.out.print("Enter title: ");
+                    String title = scanner.nextLine();
+                    System.out.print("Enter priority (1-10) (lower = more important): ");
+                    int priority = scanner.nextInt();
+                    System.out.println("Enter the deadline (yyyy-mm-dd): ");
+                    LocalDate deadline = LocalDate.parse(scanner.next());
+                    taskManager.addTask(title, priority, deadline);
                     break;
                 case 2:
-                    System.out.println("\nYou picked list all tasks.");
+                    taskManager.listAllTasks();
                     break;
                 case 3:
-                    System.out.println("\nYou picked list all tasks by priority.");
+                    taskManager.listByPriority();
                     break;
                 case 4:
-                    System.out.println("\nYou picked list all tasks by deadline.");
+                    taskManager.listByDeadline();
                     break;
                 case 5:
-                    System.out.println("\nYou picked mark task as completed.");
+                    System.out.print("Enter title of the task you completed: ");
+                    String deleteTitle = scanner.nextLine();
+                    taskManager.markTaskCompleted(deleteTitle);
                     break;
                 case 6:
-                    System.out.println("\nYou picked remove completed tasks.");
+                    taskManager.removeCompletedTasks();
                     break;
                 case 0:
                     System.out.println("\nExiting...");
