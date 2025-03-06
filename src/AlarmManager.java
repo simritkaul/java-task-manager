@@ -1,24 +1,28 @@
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class AlarmManager {
     private List<Alarm> alarmList = new ArrayList<Alarm>();
     private PriorityQueue<Alarm> alarmQueue = new PriorityQueue<>();
     private static final String alarmSoundPath = "src/resources/alarmsound.wav";
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     AlarmManager () {
-        startAlarmThread();
+        scheduleNextAlarm();
     }
 
     public void addAlarm (String name, LocalTime time) {
         Alarm newAlarm = new Alarm(name, time);
         alarmList.add(newAlarm);
         alarmQueue.offer(newAlarm);
+        scheduleNextAlarm();
     }
 
     public void removeOldAlarms () {
         alarmList.removeIf(Alarm::isInactive);
+        alarmQueue.removeIf(Alarm::isInactive);
         System.out.println("Removed old alarms!");
     }
 
@@ -41,42 +45,26 @@ public class AlarmManager {
         }
     }
 
-    private void startAlarmThread () {
-        Thread alarmThread = new Thread(() -> {
-            while (true) {
-                removeOldAlarms();
-                LocalTime now = LocalTime.now();
-                Optional<Duration> sleepDuration = Optional.empty();
+    private void scheduleNextAlarm() {
+        if (alarmQueue.isEmpty()) return;
 
-                for (Alarm alarm : alarmList) {
-                    if (alarm.isActive() && alarm.getTime().isBefore(now)) {
-                        System.out.println("⏰ Reminder: Alarm '" + alarm.getName() + "' is due at " + alarm.getTime() + "!");
-                        SoundUtils.playSound(alarmSoundPath);
-                        alarm.makeInactive();
-                    } else if (alarm.isActive() && alarm.getTime().isAfter(now)) {
-                        Duration duration = Duration.between(now, alarm.getTime());
-                        if (sleepDuration.isEmpty() || duration.compareTo(sleepDuration.get()) < 0) {
-                            sleepDuration = Optional.of(duration);
-                        }
-                    }
-                }
-                try {
-                    if (sleepDuration.isPresent()) {
-                        long sleepMilliSeconds = sleepDuration.get().toMillis();
-                        if (sleepMilliSeconds > 0) {
-                            Thread.sleep(sleepMilliSeconds);
-                        } else {
-                            Thread.sleep(10);
-                        }
-                    } else {
-                        Thread.sleep(5000);
-                    }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        alarmThread.setDaemon(true);
-        alarmThread.start();
+        // Find the next alarm
+        Alarm alarm = alarmQueue.peek();
+
+        long delay = Duration.between(LocalTime.now(), alarm.getTime()).toMillis();
+
+        if (delay < 0) delay = 0;
+
+        scheduler.schedule(() -> triggerAlarm(alarm), delay, TimeUnit.MILLISECONDS);
+    }
+
+    private void triggerAlarm(Alarm alarm) {
+        if (alarm.isActive()) {
+            System.out.println("⏰ Reminder: Alarm '" + alarm.getName() + "' is due at " + alarm.getTime() + "!");
+            SoundUtils.playSound(alarmSoundPath);
+            alarm.makeInactive();
+            removeOldAlarms();
+            scheduleNextAlarm(); // Schedule the next alarm after this one
+        }
     }
 }
