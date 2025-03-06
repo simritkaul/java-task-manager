@@ -25,6 +25,10 @@ class Alarm implements Comparable<Alarm>{
         return !isActive;
     }
 
+    public void makeInactive() {
+        this.isActive = false;
+    }
+
     public LocalTime getTime () {
         return time;
     }

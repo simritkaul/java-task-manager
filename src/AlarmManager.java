@@ -1,3 +1,4 @@
+import java.time.Duration;
 import java.time.LocalTime;
 import java.util.*;
 
@@ -42,21 +43,34 @@ public class AlarmManager {
 
     private void startAlarmThread () {
         Thread alarmThread = new Thread(() -> {
-            int alarmRingCount = 0;
             while (true) {
+                removeOldAlarms();
                 LocalTime now = LocalTime.now();
+                Optional<Duration> sleepDuration = Optional.empty();
+
                 for (Alarm alarm : alarmList) {
-                    if (alarmRingCount > 3) {
-                        removeOldAlarms();
-                    }
                     if (alarm.isActive() && alarm.getTime().isBefore(now)) {
                         System.out.println("⏰ Reminder: Alarm '" + alarm.getName() + "' is due at " + alarm.getTime() + "!");
                         SoundUtils.playSound(alarmSoundPath);
-                        alarmRingCount++;
+                        alarm.makeInactive();
+                    } else if (alarm.isActive() && alarm.getTime().isAfter(now)) {
+                        Duration duration = Duration.between(now, alarm.getTime());
+                        if (sleepDuration.isEmpty() || duration.compareTo(sleepDuration.get()) < 0) {
+                            sleepDuration = Optional.of(duration);
+                        }
                     }
                 }
                 try {
-                    Thread.sleep(5000);
+                    if (sleepDuration.isPresent()) {
+                        long sleepMilliSeconds = sleepDuration.get().toMillis();
+                        if (sleepMilliSeconds > 0) {
+                            Thread.sleep(sleepMilliSeconds);
+                        } else {
+                            Thread.sleep(10);
+                        }
+                    } else {
+                        Thread.sleep(5000);
+                    }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
